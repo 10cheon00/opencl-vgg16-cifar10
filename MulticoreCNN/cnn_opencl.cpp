@@ -275,14 +275,22 @@ void enqueueMaxPooling(cl_mem input, cl_mem output, int index) {
     CHECK_ERROR(error);
     error = clSetKernelArg(max_pooling, 3, sizeof(cl_int), &NBYN[index]);
     CHECK_ERROR(error);
+    error = clSetKernelArg(max_pooling, 4, sizeof(cl_float) * NBYN[index - 1] * NBYN[index - 1], NULL);
+    CHECK_ERROR(error);
 
-    size_t max_pooling_work_size[3] = {
+    size_t global_work_size[3] = {
         static_cast<size_t>(NBYN[index]),
         static_cast<size_t>(NBYN[index]),
         static_cast<size_t>(OUTPUT_DIM[index])
     };
 
-    error = clEnqueueNDRangeKernel(queue, max_pooling, 3, NULL, max_pooling_work_size, NULL, 0, NULL, NULL);
+    size_t local_work_size[3] = {
+        static_cast<size_t>(NBYN[index]),
+        static_cast<size_t>(NBYN[index]),
+        static_cast<size_t>(1)
+    };
+
+    error = clEnqueueNDRangeKernel(queue, max_pooling, 3, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     CHECK_ERROR(error);
 }
 

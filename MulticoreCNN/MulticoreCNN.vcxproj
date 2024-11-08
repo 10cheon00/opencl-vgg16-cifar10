@@ -149,7 +149,6 @@
     <None Include="conv.cl" />
     <None Include="fc_layer.cl" />
     <None Include="max_pooling.cl" />
-    <None Include="softmax.cl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

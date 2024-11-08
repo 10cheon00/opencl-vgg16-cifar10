@@ -43,6 +43,5 @@
     <None Include="conv.cl" />
     <None Include="max_pooling.cl" />
     <None Include="fc_layer.cl" />
-    <None Include="softmax.cl" />
   </ItemGroup>
 </Project>
