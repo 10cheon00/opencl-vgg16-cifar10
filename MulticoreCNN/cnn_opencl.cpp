@@ -28,6 +28,8 @@ cl_mem weight[21];
 cl_mem biases[21];
 float* result;
 
+time_t elapsed_time[21];
+
 void enqueueConvolution(cl_mem input, cl_mem output, int index);
 
 void enqueueMaxPooling(cl_mem input, cl_mem output, int index);
@@ -125,9 +127,6 @@ void cnn_init(float* images, float* network, int num_of_image) {
 
     fc_layer = clCreateKernel(program, "fc_layer", &error);
     CHECK_ERROR(error);
-
-    //softmax = clCreateKernel(program, "softmax", &error);
-    //CHECK_ERROR(error);
 }
 
 /*
@@ -143,7 +142,7 @@ void cnn(float* images, float* network, int* labels, float* confidences, int num
 
     cnn_init(images, network, num_images);
 
-    time_t start, end;
+    time_t start, end, stamp;
     start = clock();
     //TODO
     /************************************************************/
@@ -160,74 +159,116 @@ void cnn(float* images, float* network, int* labels, float* confidences, int num
         error = clEnqueueWriteBuffer(queue, input, CL_TRUE, 0, sizeof(float) * 32 * 32 * 3, images + offset, 0, NULL, NULL);
         offset += 32 * 32 * 3;
 
+        stamp = clock();
         enqueueConvolution(input, layer[0], 0);
         clFinish(queue);
+        elapsed_time[0] += clock() - stamp;
 
+        stamp = clock();
         enqueueConvolution(layer[0], layer[1], 1);
         clFinish(queue);
+        elapsed_time[1] += clock() - stamp;
 
+        stamp = clock();
         enqueueMaxPooling(layer[1], layer[2], 2);
         clFinish(queue);
+        elapsed_time[2] += clock() - stamp;
 
 
+        stamp = clock();
         enqueueConvolution(layer[2], layer[3], 3);
         clFinish(queue);
+        elapsed_time[3] += clock() - stamp;
 
+        stamp = clock();
         enqueueConvolution(layer[3], layer[4], 4);
         clFinish(queue);
+        elapsed_time[4] += clock() - stamp;
 
         // todo: floating point precision문제?
-        enqueueMaxPooling(layer[4], layer[5], 5); 
+        stamp = clock();
+        enqueueMaxPooling(layer[4], layer[5], 5);
         clFinish(queue);
+        elapsed_time[5] += clock() - stamp;
 
 
+        stamp = clock();
         enqueueConvolution(layer[5], layer[6], 6);
         clFinish(queue);
+        elapsed_time[6] += clock() - stamp;
 
+        stamp = clock();
         enqueueConvolution(layer[6], layer[7], 7);
         clFinish(queue);
+        elapsed_time[7] += clock() - stamp;
 
+        stamp = clock();
         enqueueConvolution(layer[7], layer[8], 8);
         clFinish(queue);
+        elapsed_time[8] += clock() - stamp;
 
+        stamp = clock();
         enqueueMaxPooling(layer[8], layer[9], 9);
         clFinish(queue);
+        elapsed_time[9] += clock() - stamp;
 
 
+        stamp = clock();
         enqueueConvolution(layer[9], layer[10], 10);
         clFinish(queue);
+        elapsed_time[10] += clock() - stamp;
 
+        stamp = clock();
         enqueueConvolution(layer[10], layer[11], 11);
         clFinish(queue);
+        elapsed_time[11] += clock() - stamp;
 
+        stamp = clock();
         enqueueConvolution(layer[11], layer[12], 12);
         clFinish(queue);
+        elapsed_time[12] += clock() - stamp;
 
+        stamp = clock();
         enqueueMaxPooling(layer[12], layer[13], 13);
         clFinish(queue);
+        elapsed_time[13] += clock() - stamp;
 
 
+        stamp = clock();
         enqueueConvolution(layer[13], layer[14], 14);
         clFinish(queue);
+        elapsed_time[14] += clock() - stamp;
 
+        stamp = clock();
         enqueueConvolution(layer[14], layer[15], 15);
         clFinish(queue);
+        elapsed_time[15] += clock() - stamp;
 
+        stamp = clock();
         enqueueConvolution(layer[15], layer[16], 16);
         clFinish(queue);
+        elapsed_time[16] += clock() - stamp;
 
+        stamp = clock();
         enqueueMaxPooling(layer[16], layer[17], 17);
         clFinish(queue);
+        elapsed_time[17] += clock() - stamp;
 
 
+        stamp = clock();
         enqueueFullyConnectedLayer(layer[17], layer[18], 18);
         clFinish(queue);
+        elapsed_time[18] += clock() - stamp;
 
+        stamp = clock();
         enqueueFullyConnectedLayer(layer[18], layer[19], 19);
         clFinish(queue);
+        elapsed_time[19] += clock() - stamp;
 
+        stamp = clock();
         enqueueFullyConnectedLayer(layer[19], layer[20], 20);
         clFinish(queue);
+        elapsed_time[20] += clock() - stamp;
 
         error = clEnqueueReadBuffer(queue, layer[20], CL_TRUE, 0, sizeof(float) * OUTPUT_DIM[20] * NBYN[20] * NBYN[20], result, 0, NULL, NULL);
 
@@ -236,7 +277,9 @@ void cnn(float* images, float* network, int* labels, float* confidences, int num
         labels[i] = findmax(result, 10);
         confidences[i] = result[labels[i]];
     }
-
+    for (int i = 0; i < 21; i++) {
+        printf("%f\n", (double)(elapsed_time[i]) / CLK_TCK);
+    }
     end = clock();
     printf("Elapsed time: %.2f sec\n", (double)(end - start) / CLK_TCK);
 }
@@ -295,6 +338,12 @@ void enqueueMaxPooling(cl_mem input, cl_mem output, int index) {
 }
 
 void enqueueFullyConnectedLayer(cl_mem input, cl_mem output, int index) {
+    // FC3은 출력층이 10이므로 크기 고정
+    // 그 외에는 16으로 설정해야만 로컬 메모리를 할당가능
+    int local_size = index < 20 ? 16 : 10;
+    size_t global_work_size = static_cast<size_t>(OUTPUT_DIM[index]);
+    size_t local_work_size = static_cast<size_t>(local_size);
+
     error = clSetKernelArg(fc_layer, 0, sizeof(cl_mem), &input);
     CHECK_ERROR(error);
     error = clSetKernelArg(fc_layer, 1, sizeof(cl_mem), &output);
@@ -303,11 +352,14 @@ void enqueueFullyConnectedLayer(cl_mem input, cl_mem output, int index) {
     CHECK_ERROR(error);
     error = clSetKernelArg(fc_layer, 3, sizeof(cl_mem), &biases[index]);
     CHECK_ERROR(error);
-    error = clSetKernelArg(fc_layer, 4, sizeof(cl_int), &INPUT_DIM[index]);
+    error = clSetKernelArg(fc_layer, 4, sizeof(cl_float) * INPUT_DIM[index], NULL);
+    CHECK_ERROR(error);
+    error = clSetKernelArg(fc_layer, 5, sizeof(cl_float) * INPUT_DIM[index] * local_size, NULL);
+    CHECK_ERROR(error);
+    error = clSetKernelArg(fc_layer, 6, sizeof(cl_int), &INPUT_DIM[index]);
+    CHECK_ERROR(error);
 
-    size_t fc_layer_work_size = static_cast<size_t>(OUTPUT_DIM[index]);
-
-    error = clEnqueueNDRangeKernel(queue, fc_layer, 1, NULL, &fc_layer_work_size, NULL, 0, NULL, NULL);
+    error = clEnqueueNDRangeKernel(queue, fc_layer, 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     CHECK_ERROR(error);
 }
 

@@ -1,5 +1,6 @@
 #define IN_BOUNDS(X, Y, BOUND) ((X) >= 0 && (X) < BOUND && (Y) >= 0 && (Y) < BOUND)
 
+
 __kernel void conv(
     __global float* input,
     __global float* filter,
